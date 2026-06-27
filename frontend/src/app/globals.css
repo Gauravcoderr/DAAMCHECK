@@ -108,3 +108,12 @@
   .tracking-tight2 { letter-spacing: -0.03em; }
   .tracking-tight3 { letter-spacing: -0.04em; }
 }
+
+@layer base {
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+}
