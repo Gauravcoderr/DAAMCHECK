@@ -55,7 +55,7 @@ Source: Railway Board / IRCTC Menu Rate Card (menurates.irctc.co.in)
 
 ### Complaint Portals
 - NCH Portal: https://consumerhelpline.gov.in — National Consumer Helpline, free
-- eDaakhil: https://edaakhil.nic.in — online consumer court filing
+- eDaakhil: https://www.india.gov.in/category/justice-law-grievances/subcategory/courts-tribunals/details/e-daakhil-portal — online consumer court filing
 - INGRAM: https://ingram.dpiit.gov.in — grievance redress
 - IRCTC Helpline: 1800-110-139 (toll-free, 24/7) — for train food complaints
 - Consumer Forum: local district consumer forum (physical filing)

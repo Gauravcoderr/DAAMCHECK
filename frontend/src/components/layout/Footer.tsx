@@ -63,7 +63,7 @@ export default function Footer() {
           <div>
             <h4 className="text-[12px] font-bold text-amber uppercase tracking-[.1em] mb-4">Complaints</h4>
             <ul className="space-y-2.5">
-              {[["NCH Portal","https://consumerhelpline.gov.in"],["eDaakhil","https://edaakhil.nic.in"],["INGRAM","https://ingram.dpiit.gov.in"],["IRCTC Helpline","https://www.irctc.co.in"]].map(([label, href]) => (
+              {[["NCH Portal","https://consumerhelpline.gov.in"],["eDaakhil","https://www.india.gov.in/category/justice-law-grievances/subcategory/courts-tribunals/details/e-daakhil-portal"],["INGRAM","https://ingram.dpiit.gov.in"],["IRCTC Helpline","https://www.irctc.co.in"]].map(([label, href]) => (
                 <li key={href}><a href={href} target="_blank" rel="noopener noreferrer" className="text-[14px] text-white/50 hover:text-white transition-colors">{label}</a></li>
               ))}
             </ul>

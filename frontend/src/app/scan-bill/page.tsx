@@ -172,7 +172,7 @@ function Results({ data }: { data: DisplayResult }) {
             File complaint — NCH
           </a>
           <a
-            href="https://edaakhil.nic.in"
+            href="https://www.india.gov.in/category/justice-law-grievances/subcategory/courts-tribunals/details/e-daakhil-portal"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center bg-white border-2 border-line hover:bg-line-2 text-ink font-bold text-[15px] rounded-full px-6 py-3 transition-all"

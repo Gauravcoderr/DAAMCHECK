@@ -11,7 +11,7 @@ const portals = [
     name: "eDaakhil",
     sub: "Consumer Dispute Filing",
     logo: null,
-    href: "https://edaakhil.nic.in",
+    href: "https://www.india.gov.in/category/justice-law-grievances/subcategory/courts-tribunals/details/e-daakhil-portal",
     initials: "eD",
     badgeCls: "bg-[#1D4ED8]",
   },
