@@ -54,6 +54,7 @@ const items = [
 
 export default function BottomNav() {
   const path = usePathname();
+  if (path === "/chat") return null;
 
   return (
     <nav

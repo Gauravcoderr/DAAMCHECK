@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function ChatBot() {
+  const path = usePathname();
+  if (path === "/chat") return null;
+
   return (
     <Link
       href="/chat"

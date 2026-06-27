@@ -21,6 +21,12 @@ export const metadata: Metadata = {
   description:
     "Check if your restaurant, IRCTC train food, or hotel bill follows Indian law. Service charge is banned. GST is capped at 5%. Free, no signup.",
   keywords: ["service charge India", "IRCTC price list", "GST restaurant", "consumer rights India"],
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

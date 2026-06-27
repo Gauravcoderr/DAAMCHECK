@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { KeyboardEvent, ChangeEvent } from "react";
 import Link from "next/link";
+import { LogoMark } from "@/components/ui/Logo";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,17 +25,17 @@ const BACKEND_URL =
 const LEAD_TRIGGER = 5;
 
 const GREETING_CONTENT =
-  "Hello! I'm DaamBot 🤖 — your Indian food bill expert.\n\nAsk me anything about:\n• GST rules (is 18% legal?)\n• IRCTC train food price caps\n• Service charge (it's banned!)\n• How to file a consumer complaint";
+  "Hello! I'm DaamBot — your Indian food bill expert.\n\nAsk me anything about:\n• GST rules (is 18% legal?)\n• IRCTC train food price caps\n• Service charge (it's banned!)\n• How to file a consumer complaint";
 
 const INITIAL_MESSAGES: Message[] = [
   { role: "assistant", content: GREETING_CONTENT, tool: null },
 ];
 
-const STARTER_CHIPS: string[] = [
-  "Is service charge legal?",
-  "IRCTC Veg Thali max price?",
-  "Restaurant charging 18% GST — legal?",
-  "How do I file a complaint?",
+const STARTER_CHIPS = [
+  { text: "Is service charge legal?", emoji: "⚖️" },
+  { text: "IRCTC Veg Thali max price?", emoji: "🚆" },
+  { text: "Restaurant charging 18% GST?", emoji: "🧾" },
+  { text: "How do I file a complaint?", emoji: "📝" },
 ];
 
 const TOOL_META: Record<string, { label: string; icon: string; desc: string }> =
@@ -56,33 +57,33 @@ const TOOL_META: Record<string, { label: string; icon: string; desc: string }> =
     },
   };
 
+// ─── Shared bot avatar ────────────────────────────────────────────────────────
+
+function BotAvatar({ size = "sm" }: { size?: "sm" | "lg" }) {
+  if (size === "lg") {
+    return (
+      <div className="w-12 h-12 rounded-2xl bg-green flex items-center justify-center shadow-[0_4px_16px_rgba(5,150,105,.3)] flex-shrink-0">
+        <LogoMark size={28} />
+      </div>
+    );
+  }
+  return (
+    <div className="w-7 h-7 rounded-full bg-green flex items-center justify-center flex-shrink-0 mr-2 mt-0.5 self-start shadow-sm">
+      <LogoMark size={16} />
+    </div>
+  );
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function TypingIndicator() {
   return (
     <div className="flex items-start mb-4">
+      <BotAvatar />
       <div className="bg-line-2 text-ink rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-        <span
-          className="w-2 h-2 rounded-full inline-block bg-ink-4"
-          style={{
-            animation: "daambot-bounce 1.2s infinite",
-            animationDelay: "0ms",
-          }}
-        />
-        <span
-          className="w-2 h-2 rounded-full inline-block bg-ink-4"
-          style={{
-            animation: "daambot-bounce 1.2s infinite",
-            animationDelay: "200ms",
-          }}
-        />
-        <span
-          className="w-2 h-2 rounded-full inline-block bg-ink-4"
-          style={{
-            animation: "daambot-bounce 1.2s infinite",
-            animationDelay: "400ms",
-          }}
-        />
+        <span className="w-2 h-2 rounded-full inline-block bg-ink-4 daambot-dot daambot-dot-1" />
+        <span className="w-2 h-2 rounded-full inline-block bg-ink-4 daambot-dot daambot-dot-2" />
+        <span className="w-2 h-2 rounded-full inline-block bg-ink-4 daambot-dot daambot-dot-3" />
       </div>
     </div>
   );
@@ -112,6 +113,7 @@ function ToolCard({ tool }: { tool: string }) {
         stroke="currentColor"
         strokeWidth={2}
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
       </svg>
@@ -131,7 +133,7 @@ function LeadCard({ onSubmit, submitted }: LeadCardProps) {
   if (submitted) {
     return (
       <div className="rounded-2xl px-5 py-4 text-sm font-medium bg-green-pale text-green border border-green-mid mt-2">
-        Got it! We&apos;ll alert you on new rule changes. 🎉
+        Got it! We&apos;ll alert you on new rule changes.
       </div>
     );
   }
@@ -198,14 +200,12 @@ export default function ChatPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom on new message or loading change
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, loading, showLeadCard]);
 
-  // Auto-resize textarea
   function resizeTextarea() {
     const el = textareaRef.current;
     if (!el) return;
@@ -218,7 +218,6 @@ export default function ChatPage() {
     if (!trimmed || loading) return;
 
     const userMsg: Message = { role: "user", content: trimmed, tool: null };
-    // Exclude the greeting from API messages (not counted as conversation history)
     const historyMessages = messages.filter(
       (m) => m.content !== GREETING_CONTENT || m.role !== "assistant"
     );
@@ -229,7 +228,6 @@ export default function ChatPage() {
     setInput("");
     setShowChips(false);
 
-    // Reset textarea height after clearing
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -260,8 +258,7 @@ export default function ChatPage() {
         ...prev,
         {
           role: "assistant",
-          content:
-            "Sorry, I ran into an issue. Please try again in a moment.",
+          content: "Sorry, I ran into an issue. Please try again in a moment.",
           tool: null,
         },
       ]);
@@ -309,77 +306,81 @@ export default function ChatPage() {
   }
 
   return (
-    <>
-      {/* Keyframe styles */}
-      <style>{`
-        @keyframes daambot-bounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
-          40% { transform: translateY(-6px); opacity: 1; }
-        }
-      `}</style>
+    <div className="min-h-screen flex flex-col bg-white">
 
-      <div className="min-h-screen flex flex-col bg-white">
-
-        {/* ── Top bar ── */}
-        <header className="fixed top-0 left-0 right-0 z-10 h-14 border-b border-line bg-white flex items-center px-4 gap-3">
-          {/* Back arrow */}
-          <Link
-            href="/"
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-2 hover:bg-line-2 transition-colors flex-shrink-0"
-            aria-label="Back to home"
-          >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-          </Link>
-
-          {/* Title + badge */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="font-semibold text-ink text-[15px]">DaamBot</span>
-            <span className="flex items-center gap-1 text-[11px] font-medium text-green flex-shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-green inline-block" />
-              Online
-            </span>
-          </div>
-
-          {/* New chat button */}
-          <button
-            type="button"
-            onClick={handleNewChat}
-            className="flex-shrink-0 text-[13px] font-medium text-ink-2 border border-line rounded-lg px-3 py-1.5 hover:border-green hover:text-green transition-colors"
-          >
-            New Chat
-          </button>
-        </header>
-
-        {/* ── Messages area ── */}
-        <main
-          ref={scrollRef}
-          className="flex-1 overflow-y-auto pt-20 pb-36 px-4"
+      {/* ── Top bar ── */}
+      <header className="fixed top-0 left-0 right-0 z-10 h-14 border-b border-line bg-white/95 backdrop-blur-sm flex items-center px-4 gap-3">
+        {/* Back */}
+        <Link
+          href="/"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-2 hover:bg-line-2 transition-colors flex-shrink-0"
+          aria-label="Back to home"
         >
-          <div className="max-w-2xl mx-auto w-full">
-            {messages.map((msg, i) => (
-              <div key={i} className="mb-1">
-                {msg.role === "user" ? (
-                  // User bubble — right-aligned
-                  <div className="flex justify-end mb-4">
-                    <div className="bg-green text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%] leading-relaxed text-[15px]">
-                      {msg.content}
-                    </div>
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </Link>
+
+        {/* Bot identity */}
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <BotAvatar />
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-ink text-[15px] tracking-[-0.2px]">DaamBot</span>
+              <span className="flex items-center gap-1 text-[11px] font-medium text-green flex-shrink-0">
+                <span className="w-1.5 h-1.5 rounded-full bg-green inline-block" />
+                Online
+              </span>
+            </div>
+            <p className="text-[10px] text-ink-4 leading-none mt-0.5 hidden sm:block">
+              Indian food bill expert · Powered by Gemini
+            </p>
+          </div>
+        </div>
+
+        {/* New chat */}
+        <button
+          type="button"
+          onClick={handleNewChat}
+          className="flex-shrink-0 flex items-center gap-1.5 text-[13px] font-medium text-ink-2 border border-line rounded-lg px-3 py-1.5 hover:border-green hover:text-green transition-colors"
+          aria-label="Start a new chat"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New
+        </button>
+      </header>
+
+      {/* ── Messages area ── */}
+      <main ref={scrollRef} className="flex-1 overflow-y-auto pt-20 pb-40 px-4">
+        <div className="max-w-2xl mx-auto w-full">
+          {messages.map((msg, i) => (
+            <div key={i} className="mb-1">
+              {msg.role === "user" ? (
+                <div className="flex justify-end mb-4">
+                  <div className="bg-green text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%] leading-relaxed text-[15px]">
+                    {msg.content}
                   </div>
-                ) : (
-                  // Assistant bubble — left-aligned
-                  <div className="flex flex-col items-start mb-4">
+                </div>
+              ) : (
+                <div className="flex items-start mb-4">
+                  <BotAvatar />
+                  <div className="flex flex-col flex-1 min-w-0">
                     <div className="bg-line-2 text-ink rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] leading-relaxed text-[15px]">
                       {msg.content.split("\n").map((line, li, arr) => (
                         <span key={li}>
@@ -394,90 +395,83 @@ export default function ChatPage() {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
-            ))}
-
-            {/* Starter chips — shown after greeting, disappear after first user message */}
-            {showChips && (
-              <div className="flex flex-wrap gap-2 justify-center mt-4 mb-2">
-                {STARTER_CHIPS.map((chip) => (
-                  <button
-                    type="button"
-                    key={chip}
-                    onClick={() => void sendMessage(chip)}
-                    className="bg-line-2 border border-line hover:border-green hover:bg-green-pale text-ink-2 hover:text-green text-[13px] rounded-full px-4 py-2 transition-colors cursor-pointer"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Lead capture card — inline after 5 user messages */}
-            {showLeadCard && (
-              <LeadCard
-                onSubmit={handleLeadSubmit}
-                submitted={leadSubmitted}
-              />
-            )}
-
-            {/* Typing indicator */}
-            {loading && <TypingIndicator />}
-          </div>
-        </main>
-
-        {/* ── Input bar ── */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line px-4 py-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="flex items-end gap-3 bg-line-3 border border-line rounded-2xl px-4 py-3 focus-within:border-green/40 focus-within:ring-2 focus-within:ring-green/10 transition-all">
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                value={input}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
-                  setInput(e.target.value);
-                  resizeTextarea();
-                }}
-                onKeyDown={handleKeyDown}
-                disabled={loading}
-                placeholder="Ask about your bill — GST, IRCTC prices, service charge..."
-                className="flex-1 resize-none bg-transparent text-ink placeholder:text-ink-4 text-[15px] outline-none leading-relaxed disabled:opacity-60"
-                style={{
-                  maxHeight: "128px",
-                  overflowY: "auto",
-                  fontFamily: "inherit",
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => void sendMessage(input)}
-                disabled={loading || !input.trim()}
-                aria-label="Send message"
-                className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-green disabled:opacity-40 transition-opacity"
-              >
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M5 12h14M12 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
+                </div>
+              )}
             </div>
-            <p className="text-center text-[11px] text-ink-4 mt-2">
-              Enter to send · Shift+Enter for new line
-            </p>
-          </div>
-        </div>
+          ))}
 
+          {/* Starter chips */}
+          {showChips && (
+            <div className="flex flex-wrap gap-2 justify-center mt-4 mb-2">
+              {STARTER_CHIPS.map((chip) => (
+                <button
+                  type="button"
+                  key={chip.text}
+                  onClick={() => void sendMessage(chip.text)}
+                  className="flex items-center gap-1.5 bg-white border border-line hover:border-green hover:bg-green-pale text-ink-2 hover:text-green text-[13px] rounded-full px-4 py-2 transition-all hover:-translate-y-0.5 hover:shadow-sm cursor-pointer"
+                >
+                  <span>{chip.emoji}</span>
+                  {chip.text}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Lead capture */}
+          {showLeadCard && (
+            <LeadCard onSubmit={handleLeadSubmit} submitted={leadSubmitted} />
+          )}
+
+          {/* Typing indicator */}
+          {loading && <TypingIndicator />}
+        </div>
+      </main>
+
+      {/* ── Gradient fade above input ── */}
+      <div className="fixed bottom-[72px] left-0 right-0 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+
+      {/* ── Input bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-line px-4 py-3">
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-end gap-3 bg-line-3 border border-line rounded-2xl px-4 py-3 focus-within:border-green/40 focus-within:ring-2 focus-within:ring-green/10 transition-all">
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={input}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => {
+                setInput(e.target.value);
+                resizeTextarea();
+              }}
+              onKeyDown={handleKeyDown}
+              disabled={loading}
+              placeholder="Ask about your bill — GST, IRCTC prices, service charge..."
+              className="chat-textarea flex-1 resize-none bg-transparent text-ink placeholder:text-ink-4 text-[15px] outline-none leading-relaxed disabled:opacity-60"
+            />
+            <button
+              type="button"
+              onClick={() => void sendMessage(input)}
+              disabled={loading || !input.trim()}
+              aria-label="Send message"
+              className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-green disabled:opacity-40 transition-all hover:bg-green-dark hover:shadow-[0_4px_12px_rgba(5,150,105,.35)]"
+            >
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+          <p className="text-center text-[11px] text-ink-4 mt-2">
+            Enter to send · Shift+Enter for new line
+          </p>
+        </div>
       </div>
-    </>
+
+    </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Logo } from "@/components/ui/Logo";
 
 const links = [
   { href: "/", label: "Home" },
@@ -12,18 +13,14 @@ const links = [
 
 export default function Nav() {
   const path = usePathname();
+  if (path === "/chat") return null;
 
   return (
     <header className="sticky top-0 z-50 bg-white/94 backdrop-blur-md border-b border-line">
       <div className="max-w-6xl mx-auto px-6 md:px-10 flex items-center h-[62px] gap-8">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 flex-shrink-0 group">
-          <div className="w-8 h-8 bg-green rounded-[9px] grid place-items-center text-white text-[15px] font-black tracking-tighter transition-colors group-hover:bg-green-dark">
-            D
-          </div>
-          <span className="text-[18px] font-extrabold text-ink tracking-[-0.4px]">
-            Daam<span className="text-green">Check</span>
-          </span>
+        <Link href="/" className="flex-shrink-0 transition-opacity hover:opacity-90">
+          <Logo />
         </Link>
 
         {/* Desktop links */}

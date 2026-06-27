@@ -4,10 +4,8 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { getIRCTCPrices } from "@/lib/api";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
 type Category = "All" | "Meals" | "Breakfast" | "Beverages" | "Snacks";
 
@@ -17,18 +15,30 @@ interface IRCTCItem {
   maxPrice: number;
 }
 
-const CATEGORIES: Category[] = ["All", "Meals", "Breakfast", "Beverages", "Snacks"];
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
-const categoryBadgeClass: Record<string, string> = {
-  Meals: "bg-green-pale text-green hover:bg-green-pale",
-  Breakfast: "bg-amber-pale text-amber hover:bg-amber-pale",
-  Beverages: "bg-sky-50 text-sky-700 hover:bg-sky-50",
-  Snacks: "bg-violet-50 text-violet-700 hover:bg-violet-50",
+const CATEGORIES: Category[] = ["All", "Meals", "Breakfast", "Beverages", "Snacks"];
+const CAT_ORDER: Exclude<Category, "All">[] = ["Meals", "Breakfast", "Beverages", "Snacks"];
+
+type CatKey = "Meals" | "Breakfast" | "Beverages" | "Snacks";
+
+const CAT_STYLE: Record<CatKey, {
+  accent: string;
+  iconBox: string;
+  tag: string;
+  price: string;
+}> = {
+  Meals:     { accent: "bg-green",       iconBox: "bg-green-pale text-green",           tag: "bg-green-pale text-[#065F46]",   price: "text-green" },
+  Breakfast: { accent: "bg-amber",       iconBox: "bg-amber-pale text-amber",           tag: "bg-amber-pale text-[#92400E]",   price: "text-amber" },
+  Beverages: { accent: "bg-[#2563EB]",   iconBox: "bg-[#EFF6FF] text-[#2563EB]",       tag: "bg-[#EFF6FF] text-[#1E40AF]",   price: "text-[#2563EB]" },
+  Snacks:    { accent: "bg-[#7C3AED]",   iconBox: "bg-[#F5F3FF] text-[#7C3AED]",       tag: "bg-[#F5F3FF] text-[#5B21B6]",   price: "text-[#7C3AED]" },
 };
+
+// ─── Category Icons ────────────────────────────────────────────────────────────
 
 function MealsIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <circle cx="14" cy="16" r="9" stroke="currentColor" strokeWidth="1.8" />
       <path d="M10 8.5 Q11 6 14 6 Q17 6 18 8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" fill="none" />
       <path d="M11 4.5 Q11.5 3 12 4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
@@ -40,7 +50,7 @@ function MealsIcon() {
 
 function BreakfastIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <circle cx="14" cy="14" r="5" stroke="currentColor" strokeWidth="1.8" />
       <line x1="14" y1="3" x2="14" y2="5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       <line x1="14" y1="22.5" x2="14" y2="25" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -56,7 +66,7 @@ function BreakfastIcon() {
 
 function BeveragesIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <path d="M8 8h12l-2 14H10L8 8Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
       <path d="M20 10h2a2 2 0 0 1 0 4h-2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M10 5 Q11 3.5 12 5 Q13 6.5 14 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" fill="none" />
@@ -66,7 +76,7 @@ function BeveragesIcon() {
 
 function SnacksIcon() {
   return (
-    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="22" height="22" viewBox="0 0 28 28" fill="none" aria-hidden="true">
       <circle cx="14" cy="14" r="9" stroke="currentColor" strokeWidth="1.8" />
       <circle cx="11" cy="12" r="1.2" fill="currentColor" />
       <circle cx="16" cy="11" r="1" fill="currentColor" />
@@ -77,22 +87,76 @@ function SnacksIcon() {
   );
 }
 
-const categoryIconMap: Record<string, React.ReactNode> = {
+const ICONS: Record<CatKey, React.ReactNode> = {
   Meals: <MealsIcon />,
   Breakfast: <BreakfastIcon />,
   Beverages: <BeveragesIcon />,
   Snacks: <SnacksIcon />,
 };
 
-const categoryIconBg: Record<string, string> = {
-  Meals: "bg-green-pale text-green",
-  Breakfast: "bg-amber-pale text-amber",
-  Beverages: "bg-sky-50 text-sky-700",
-  Snacks: "bg-violet-50 text-violet-700",
-};
+// ─── Item Card ──────────────────────────────────────────────────────────────────
+
+function ItemCard({ item }: { item: IRCTCItem }) {
+  const cat = item.category as CatKey;
+  const s = CAT_STYLE[cat] ?? CAT_STYLE.Meals;
+
+  return (
+    <div className="relative bg-white border-[1.5px] border-line rounded-2xl p-4 flex items-center gap-3.5 overflow-hidden hover:border-green hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(5,150,105,.1)] transition-all duration-200">
+      {/* left accent */}
+      <div className={`absolute left-0 top-0 bottom-0 w-[3px] rounded-[2px] ${s.accent}`} />
+
+      {/* icon */}
+      <div className={`w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0 ${s.iconBox}`}>
+        {ICONS[cat]}
+      </div>
+
+      {/* text */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-ink leading-snug mb-2">{item.name}</p>
+        <div className="flex items-center justify-between gap-2">
+          <span className={`text-[10px] font-bold uppercase tracking-[.06em] px-2 py-[2px] rounded ${s.tag}`}>
+            {item.category}
+          </span>
+          <span className={`flex items-baseline gap-[2px] ${s.price}`}>
+            <span className="text-[9px] font-semibold uppercase tracking-[.06em] opacity-70 mr-0.5">max</span>
+            <span className="text-[15px] font-black tracking-tight2 font-tabular">₹{item.maxPrice}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Category Section ──────────────────────────────────────────────────────────
+
+function CategorySection({ cat, items }: { cat: CatKey; items: IRCTCItem[] }) {
+  const s = CAT_STYLE[cat];
+  if (items.length === 0) return null;
+
+  return (
+    <div>
+      {/* section header */}
+      <div className="flex items-center gap-3 border-b-2 border-line mb-[18px] pb-[14px]">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.iconBox}`}>
+          {ICONS[cat]}
+        </div>
+        <span className="text-lg font-extrabold text-ink">{cat}</span>
+        <span className="text-xs font-semibold bg-line-2 px-2.5 py-1 rounded-full text-ink-4 ml-1">{items.length} items</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+        {items.map((item) => (
+          <ItemCard key={item.name} item={item} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function IRCTCPricesPage() {
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category>("All");
 
   const { data, isLoading, isError } = useQuery<{ prices: IRCTCItem[] }>({
@@ -101,156 +165,122 @@ export default function IRCTCPricesPage() {
     staleTime: 60 * 60 * 1000,
   });
 
-  const filtered = useMemo<IRCTCItem[]>(() => {
+  const grouped = useMemo<Record<CatKey, IRCTCItem[]>>(() => {
     const items = data?.prices ?? [];
-    return items.filter((item) => {
-      const matchesCategory = activeCategory === "All" || item.category === activeCategory;
-      const matchesSearch = search.trim() === "" || item.name.toLowerCase().includes(search.trim().toLowerCase());
-      return matchesCategory && matchesSearch;
-    });
+    const q = search.trim().toLowerCase();
+    return CAT_ORDER.reduce((acc, cat) => {
+      acc[cat] = items.filter((item) => {
+        const catMatch = activeCategory === "All" || item.category === activeCategory;
+        const searchMatch = !q || item.name.toLowerCase().includes(q);
+        return item.category === cat && catMatch && searchMatch;
+      });
+      return acc;
+    }, {} as Record<CatKey, IRCTCItem[]>);
   }, [data, search, activeCategory]);
 
+  const totalShowing = CAT_ORDER.reduce((n, cat) => n + grouped[cat].length, 0);
+
   return (
-    <div className="min-h-screen bg-white flex flex-col">
-      {/* Page Header */}
-      <section className="bg-green-pale border-b border-line">
-        <div className="max-w-5xl mx-auto px-4 py-8 sm:py-10">
-          <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-green transition-colors mb-5">
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M11 14l-5-5 5-5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    <div className="min-h-screen bg-[#faf9f5]">
+      <div className="max-w-[1160px] mx-auto px-6 md:px-10 py-12">
+
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-3 hover:text-ink transition mb-5">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="8,2 4,6 8,10" />
+          </svg>
+          Back
+        </Link>
+
+        {/* heading */}
+        <div className="mb-8">
+          <h1 className="text-[clamp(28px,4vw,42px)] font-black tracking-tight3 text-ink leading-[1.1] mb-2">IRCTC Food Price Caps</h1>
+          <p className="text-[17px] text-ink-3">Official maximum prices. Any vendor charging more is violating Railway Board rules.</p>
+        </div>
+
+        {/* dark helpline banner */}
+        <div className="bg-ink rounded-xl px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
+          <p className="text-white text-[15px]">Overcharged on a train? Call IRCTC at <strong className="font-extrabold">1800-110-139</strong></p>
+          <a href="tel:18001100139" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white font-bold text-sm rounded-full px-5 py-2.5 transition shrink-0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
             </svg>
-            Back to home
-          </Link>
-
-          <span className="inline-flex items-center gap-1.5 bg-green text-white text-xs font-semibold px-3 py-1 rounded-full mb-3 tracking-wide uppercase">
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M6.5 1.5l1.3 2.6 2.9.4-2.1 2 .5 2.9-2.6-1.4L4 9.4l.5-2.9-2.1-2 2.9-.4L6.5 1.5Z" fill="white" />
-            </svg>
-            Official IRCTC Caps
-          </span>
-
-          <h1 className="text-2xl sm:text-3xl font-bold text-ink tracking-tight2 mb-2">Train Food Maximum Prices</h1>
-
-          <p className="text-sm sm:text-base text-ink-2 max-w-2xl mb-3">
-            Vendors on Indian Railways cannot legally charge above these amounts. Source: IRCTC Menu Rate Card.
-          </p>
-
-          <a href="https://www.irctc.co.in" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-green underline underline-offset-2 hover:text-green-dark transition-colors">
-            irctc.co.in
-            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M5 2.5H2.5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              <path d="M7.5 2.5h3v3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-              <line x1="10.5" y1="2.5" x2="5.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-            </svg>
+            Call helpline
           </a>
         </div>
-      </section>
 
-      {/* Search + Filter */}
-      <section className="max-w-5xl mx-auto w-full px-4 pt-6 pb-2">
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-          <div className="relative flex-1 max-w-sm">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4 pointer-events-none">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.5" />
-                <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </span>
-            <Input
-              type="text"
-              placeholder="Search food item..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
-              <Button
-                key={cat}
-                variant={activeCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(cat)}
-                className={
-                  activeCategory === cat
-                    ? "bg-green text-white hover:bg-green-dark rounded-full px-3.5"
-                    : "rounded-full px-3.5 border-line text-ink-2 hover:border-green hover:text-green"
-                }
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
+        {/* search */}
+        <div className="relative mb-4">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-4">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+              <circle cx="7" cy="7" r="4.5" />
+              <line x1="10.5" y1="10.5" x2="14" y2="14" />
+            </svg>
+          </span>
+          <input
+            type="search"
+            placeholder="Search — Veg Thali, Tea, Samosa..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white border-[1.5px] border-line rounded-full pl-11 pr-5 py-3 text-base text-ink outline-none focus:border-green focus:shadow-[0_0_0_3px_rgba(5,150,105,.12)] transition-all"
+          />
         </div>
 
-        <p className="mt-3 text-xs text-ink-3">
-          Showing <span className="font-semibold text-ink-2">{filtered.length}</span> item{filtered.length !== 1 ? "s" : ""}
-        </p>
-      </section>
+        {/* category pills */}
+        <div className="flex flex-wrap gap-2 mb-8">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setActiveCategory(cat)}
+              className={`px-[18px] py-2 rounded-full text-sm font-bold border-[1.5px] transition-all ${
+                activeCategory === cat
+                  ? "bg-ink text-white border-ink"
+                  : "bg-white text-ink-2 border-line hover:bg-line-2"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
 
-      {/* Card Grid */}
-      <section className="max-w-5xl mx-auto w-full px-4 pt-4 pb-10 flex-1">
+        {/* states */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-24">
             <div className="w-8 h-8 border-2 border-green border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
         {isError && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-ink-2 font-medium text-base mb-1">Failed to load prices</p>
-            <p className="text-ink-4 text-sm">Check your connection and try again.</p>
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <p className="text-ink font-bold text-lg mb-1">Could not load prices</p>
+            <p className="text-ink-3 text-sm">Check your connection and try again.</p>
           </div>
         )}
 
-        {!isLoading && !isError && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <span className="text-4xl mb-4">🔍</span>
-            <p className="text-ink-2 font-medium text-base mb-1">No items found</p>
-            <p className="text-ink-4 text-sm">Try a different search term or category.</p>
+        {!isLoading && !isError && totalShowing === 0 && (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <p className="text-ink font-bold text-lg mb-1">No items match</p>
+            <p className="text-ink-3 text-sm">Try a different search or category.</p>
           </div>
         )}
 
-        {!isLoading && !isError && filtered.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {filtered.map((item) => (
-              <Card key={item.name} className="hover:-translate-y-1 hover:shadow-lg hover:border-green transition-all duration-200 flex flex-col">
-                <CardContent className="pt-5 flex flex-col gap-3 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${categoryIconBg[item.category] ?? "bg-line-2 text-ink-3"}`}>
-                      {categoryIconMap[item.category]}
-                    </span>
-                    <Badge className={categoryBadgeClass[item.category] ?? "bg-line-2 text-ink-3"}>
-                      {item.category}
-                    </Badge>
-                  </div>
-
-                  <p className="font-semibold text-ink text-[15px] leading-snug">{item.name}</p>
-
-                  <div className="mt-auto">
-                    <p className="text-[11px] text-ink-3 mb-0.5 font-medium uppercase tracking-wide">Max price</p>
-                    <p className="text-2xl font-bold text-green tabular-nums tracking-tight2">&#x20B9;{item.maxPrice}</p>
-                    <p className="text-[11px] text-ink-4 mt-0.5">Vendor cannot charge above this</p>
-                  </div>
-                </CardContent>
-              </Card>
+        {!isLoading && !isError && totalShowing > 0 && (
+          <div>
+            {CAT_ORDER.map((cat) => (
+              <CategorySection key={cat} cat={cat} items={grouped[cat]} />
             ))}
           </div>
         )}
-      </section>
 
-      {/* Footer info strip */}
-      <footer className="bg-green-pale border-t border-line">
-        <div className="max-w-5xl mx-auto px-4 py-5">
-          <p className="text-[13px] text-ink-2 leading-relaxed">
-            <span className="font-semibold text-ink">Note:</span> These prices are official caps per Railway Board / IRCTC circular. If charged more, report to IRCTC Helpline:{" "}
-            <a href="tel:18001100139" className="font-semibold text-green hover:underline">1800-110-139</a>{" "}
-            or file a complaint at the{" "}
-            <a href="https://consumerhelpline.gov.in" target="_blank" rel="noopener noreferrer" className="font-semibold text-green hover:underline">NCH Portal</a>.
-          </p>
-        </div>
-      </footer>
+        {/* footer note */}
+        {!isLoading && !isError && (
+          <div className="mt-4 pt-6 border-t border-line">
+            <p className="text-xs text-ink-4">
+              Source: IRCTC Menu Rate Card · <a href="https://menurates.irctc.co.in" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink-2">menurates.irctc.co.in</a>
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
