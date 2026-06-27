@@ -3,8 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Nav from "@/components/layout/Nav";
 import BottomNav from "@/components/layout/BottomNav";
+import Providers from "./providers";
 import ChatBot from "@/components/layout/ChatBot";
-
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
   variable: "--font-geist-sans",
@@ -25,12 +25,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}>
-        <Nav />
-        <main className="flex-1 pb-14 md:pb-0">{children}</main>
-        <BottomNav />
-        <ChatBot />
+        <Providers>
+          <Nav />
+          <main className="flex-1 pb-14 md:pb-0">{children}</main>
+          <BottomNav />
+          <ChatBot />
+        </Providers>
       </body>
     </html>
   );

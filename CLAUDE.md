@@ -1,21 +1,26 @@
 # DAAMCHECK — Claude Context
 
 ## Stack
+
 - **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS → Vercel
 - **Backend**: Express + TypeScript + MongoDB (Mongoose) → Render
 - **AI Chatbot**: Gemini 2.0 Flash (primary) → Groq llama-3.3-70b (fallback) — DaamBot
 - **Font**: Geist (self-hosted via `next/font/local`, `./fonts/GeistVF.woff`) — CSS var `--font-geist-sans`
 - **No PostgreSQL** — everything MongoDB. No Supabase.
+- **UI components**: shadcn/ui — always use `Button`, `Input`, `Card`, `Label`, `Badge`, `Alert` from `@/components/ui/*` instead of raw HTML elements
+- **Data fetching**: `@tanstack/react-query` — always use `useMutation` for POST calls and `useQuery` for GET calls; wrap app in `<Providers>` (already in layout.tsx)
 
 ## Key env vars (frontend)
-```
+
+```env
 NEXT_PUBLIC_API_URL   → backend base (e.g. https://your-backend.onrender.com/api/v1)
 GEMINI_API_KEY        → DaamBot chatbot (server-side only)
 GROQ_API_KEY          → DaamBot fallback (server-side only)
 ```
 
 ## Key env vars (backend)
-```
+
+```env
 PORT=5001
 MONGODB_URI           → MongoDB Atlas connection string
 FRONTEND_URL          → CORS origin whitelist
@@ -24,7 +29,8 @@ GROQ_API_KEY          → fallback
 ```
 
 ## Directory structure
-```
+
+```bash
 daamcheck/
 ├── frontend/
 │   ├── src/
@@ -70,6 +76,7 @@ daamcheck/
 ```
 
 ## Tailwind custom tokens
+
 ```typescript
 colors: {
   green: { DEFAULT: "#059669", dark: "#047857", pale: "#ECFDF5", mid: "#A7F3D0" },
@@ -86,17 +93,21 @@ animation: { marquee: "marquee 30s linear infinite" },
 ```
 
 ## API routes (backend)
+
 All prefixed `/api/v1/`.
 
 ### `POST /gst/check`
+
 **Body**: `{ amount: number, gstPct: number, servicePct?: number, roomRate?: number }`
 
 **Logic**:
+
 - `correctGst = roomRate >= 7500 ? 18 : 5`
 - Service charge is illegal at any %, per CCPA 2022
 - Violations array: `GST_OVERCHARGE` and/or `SERVICE_CHARGE`
 
 **Response**:
+
 ```json
 {
   "legal": false,
@@ -114,17 +125,21 @@ All prefixed `/api/v1/`.
 ```
 
 ### `GET /irctc/prices`
+
 Returns `{ prices: IRCTCItem[], grouped: Record<string, IRCTCItem[]>, updatedAt: string }`
 
 ### `POST /irctc/check`
+
 **Body**: `{ items: [{ name: string, chargedPrice: number }] }`
 
 **Response**: `{ results, totalOvercharge, legal, complaintNumber: "1800-110-139" }`
 
 ### `GET /health`
+
 Keep-alive endpoint. Ping via UptimeRobot every 5 min (Render free tier sleeps after 15 min).
 
 ## IRCTC price caps (22 items — hardcoded in backend/src/routes/irctc.ts)
+
 | Category | Items |
 |----------|-------|
 | Meals | Veg Thali ₹110, Non-Veg Thali ₹135, Dal Makhani+Roti ₹80, Rajma Chawal ₹80, Veg Fried Rice ₹75, Chole Bhature ₹70 |
@@ -135,6 +150,7 @@ Keep-alive endpoint. Ping via UptimeRobot every 5 min (Render free tier sleeps a
 Source: [menurates.irctc.co.in](https://menurates.irctc.co.in)
 
 ## Legal rules (important for AI context)
+
 | Rule | Detail |
 |------|--------|
 | GST — restaurants | 5% (no ITC), applies to standalone restaurants and hotel food when room rate < ₹7,500/night |
@@ -143,6 +159,7 @@ Source: [menurates.irctc.co.in](https://menurates.irctc.co.in)
 | IRCTC caps | Mandatory maximum prices per Railway Board circular. Not suggestions. |
 
 ## Frontend api.ts helpers
+
 ```typescript
 checkGST({ amount, gstPct, servicePct?, roomRate? })    // POST /gst/check
 getIRCTCPrices()                                          // GET /irctc/prices (next: { revalidate: 3600 })
@@ -150,12 +167,15 @@ checkIRCTCItems(items: { name, chargedPrice }[])         // POST /irctc/check
 ```
 
 ## Homepage section order
+
 Marquee → Hero → TrustStrip → Stats → ToolCards → HowItWorks → CtaBand → Footer
 
 ## Nav links (desktop + mobile bottom nav)
+
 Home (`/`) · GST Checker (`/gst-checker`) · IRCTC Prices (`/irctc-prices`) · Scan Bill (`/scan-bill`)
 
 ## Complaint portals referenced in UI
+
 | Name | URL | Icon in TrustStrip |
 |------|-----|--------------------|
 | NCH Portal | consumerhelpline.gov.in | Real PNG logo (`/logos/nch.png`) |
@@ -165,6 +185,7 @@ Home (`/`) · GST Checker (`/gst-checker`) · IRCTC Prices (`/irctc-prices`) · 
 | Consumer Forum | — | Styled initials badge |
 
 ## Important decisions / gotchas
+
 - Geist font self-hosted — Next.js 14 template ships with `./fonts/GeistVF.woff`. No CDN needed.
 - `src/types/css.d.ts` — `declare module "*.css"` — fixes VS Code TS error on `import "./globals.css"` when IDE uses built-in TS instead of workspace version
 - HowItWorks connector line: z-index:0 on the dashed line, z-index:10 on step divs — keeps icons above connector
@@ -177,6 +198,7 @@ Home (`/`) · GST Checker (`/gst-checker`) · IRCTC Prices (`/irctc-prices`) · 
 - All 3 tool pages are `"use client"` components for search/filter/form interactivity
 
 ## DaamBot (planned / not yet built)
+
 - Route: `frontend/src/app/api/chat/route.ts`
 - Same pattern as reference project: Gemini 2.0 Flash → Groq llama-3.3-70b fallback
 - System prompt: DaamCheck expert, knows all GST rules, IRCTC caps, CCPA 2022, complaint portals
