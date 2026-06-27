@@ -7,6 +7,7 @@ import { connectDB } from './config/database';
 import gstRouter from './routes/gst';
 import irctcRouter from './routes/irctc';
 import chatRouter from './routes/chatLeads';
+import adminRouter from './routes/admin';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -14,7 +15,11 @@ const PORT = process.env.PORT || 5001;
 app.set('trust proxy', 1);
 
 app.use(helmet());
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+  exposedHeaders: ['Content-Range'],
+}));
 app.use(express.json({ limit: '10mb' }));
 
 const limiter = rateLimit({ windowMs: 60_000, max: 30, standardHeaders: true, legacyHeaders: false });
@@ -25,6 +30,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'daamcheck-a
 app.use('/api/v1/gst', gstRouter);
 app.use('/api/v1/irctc', irctcRouter);
 app.use('/api/v1/chat', chatRouter);
+app.use('/api/v1/admin', adminRouter);
 
 connectDB().then(() => {
   app.listen(PORT, () => console.log(`DaamCheck API → http://localhost:${PORT}`));
