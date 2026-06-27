@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import Nav from "@/components/layout/Nav";
 import BottomNav from "@/components/layout/BottomNav";
+import ChatBot from "@/components/layout/ChatBot";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Nav />
         <main className="flex-1 pb-14 md:pb-0">{children}</main>
         <BottomNav />
+        <ChatBot />
       </body>
     </html>
   );

@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { connectDB } from './config/database';
 import gstRouter from './routes/gst';
 import irctcRouter from './routes/irctc';
+import chatRouter from './routes/chatLeads';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -23,6 +24,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'daamcheck-a
 
 app.use('/api/v1/gst', gstRouter);
 app.use('/api/v1/irctc', irctcRouter);
+app.use('/api/v1/chat', chatRouter);
 
 connectDB().then(() => {
   app.listen(PORT, () => console.log(`DaamCheck API → http://localhost:${PORT}`));
