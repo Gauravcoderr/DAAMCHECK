@@ -1,5 +1,4 @@
-paddlepaddle
-paddleocr
+easyocr
 flask
 gunicorn
 opencv-python-headless

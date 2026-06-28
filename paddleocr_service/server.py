@@ -1,33 +1,38 @@
 """
-PaddleOCR local service — Pass 1 vision transcription fallback for DaamCheck.
+OCR service for DaamCheck — Pass 1 vision transcription fallback.
+Uses EasyOCR (CPU, no GPU required).
 
 Install:
-  pip install paddlepaddle paddleocr flask opencv-python-headless numpy
+  pip install easyocr flask gunicorn opencv-python-headless numpy
 
-Run:
+Run locally:
   python server.py          # starts on port 8100
 
+Production (Render):
+  gunicorn server:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+
 POST /ocr
-  Body: { "imageBase64": "data:image/jpeg;base64,..." }
+  Body: { "imageBase64": "<raw base64 or data URI>" }
   Response: { "text": "raw transcribed text" }
 """
 
 import base64
+import os
 import sys
 import numpy as np
 import cv2
 from flask import Flask, request, jsonify
 
 try:
-    from paddleocr import PaddleOCR
+    import easyocr
 except ImportError:
-    print("ERROR: paddleocr not installed. Run: pip install paddlepaddle paddleocr")
+    print("ERROR: easyocr not installed. Run: pip install easyocr")
     sys.exit(1)
 
 app = Flask(__name__)
 
-# Initialize once — downloads models on first run (~300MB)
-ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+# Initialize once — downloads models (~100MB) on first run
+reader = easyocr.Reader(["en"], gpu=False, verbose=False)
 
 
 @app.route("/health")
@@ -43,7 +48,7 @@ def run_ocr():
     if not image_b64:
         return jsonify({"error": "imageBase64 required"}), 400
 
-    # Strip data URL prefix if present
+    # Strip data URI prefix if present
     if "," in image_b64:
         image_b64 = image_b64.split(",", 1)[1]
 
@@ -57,27 +62,16 @@ def run_ocr():
         return jsonify({"error": f"Image decode failed: {e}"}), 400
 
     try:
-        result = ocr.ocr(img, cls=True)
+        results = reader.readtext(img, detail=1)
     except Exception as e:
         return jsonify({"error": f"OCR failed: {e}"}), 500
 
-    lines = []
-    if result:
-        for page in result:
-            if not page:
-                continue
-            for item in page:
-                if item and len(item) >= 2:
-                    text = item[1][0] if isinstance(item[1], (list, tuple)) else str(item[1])
-                    conf = item[1][1] if isinstance(item[1], (list, tuple)) and len(item[1]) > 1 else 1.0
-                    if conf > 0.5:  # skip very low-confidence detections
-                        lines.append(text)
-
+    lines = [text for (_, text, conf) in results if conf > 0.5]
     return jsonify({"text": "\n".join(lines)})
 
 
 if __name__ == "__main__":
-    port = 8100
-    print(f"PaddleOCR service starting on http://localhost:{port}")
-    print("First run will download models (~300MB) — wait for 'Ready'")
+    port = int(os.environ.get("PORT", 8100))
+    print(f"OCR service starting on http://localhost:{port}")
+    print("First run downloads EasyOCR models (~100MB) — wait for 'Ready'")
     app.run(host="0.0.0.0", port=port, debug=False)
