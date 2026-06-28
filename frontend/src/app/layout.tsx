@@ -17,10 +17,48 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://daamcheck.vercel.app"),
   title: { default: "DaamCheck — Indian Food Bill Validator", template: "%s | DaamCheck" },
   description:
     "Check if your restaurant, IRCTC train food, or hotel bill follows Indian law. Service charge is banned. GST is capped at 5%. Free, no signup.",
-  keywords: ["service charge India", "IRCTC price list", "GST restaurant", "consumer rights India"],
+  keywords: [
+    "service charge India illegal",
+    "IRCTC food price list",
+    "GST restaurant India",
+    "consumer rights India",
+    "restaurant bill checker",
+    "food overcharge India",
+    "CCPA 2022 service charge",
+    "hotel GST rate India",
+  ],
+  authors: [{ name: "DaamCheck" }],
+  creator: "DaamCheck",
+  publisher: "DaamCheck",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
+  },
+  openGraph: {
+    type: "website",
+    siteName: "DaamCheck",
+    title: "DaamCheck — Indian Food Bill Validator",
+    description:
+      "Check if your restaurant, IRCTC train food, or hotel bill follows Indian law. Service charge is banned. GST is capped at 5%. Free, no signup.",
+    url: "https://daamcheck.vercel.app",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "DaamCheck — Indian Food Bill Validator" }],
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DaamCheck — Indian Food Bill Validator",
+    description:
+      "Check if your restaurant, IRCTC train food, or hotel bill follows Indian law. Service charge is banned. GST is capped at 5%.",
+    images: ["/opengraph-image"],
+  },
+  alternates: {
+    canonical: "https://daamcheck.vercel.app",
+  },
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
