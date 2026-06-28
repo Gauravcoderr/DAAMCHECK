@@ -1,4 +1,5 @@
-easyocr
+pytesseract
+Pillow
 flask
 gunicorn
 opencv-python-headless

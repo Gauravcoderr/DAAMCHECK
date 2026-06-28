@@ -1,9 +1,10 @@
 """
 OCR service for DaamCheck — Pass 1 vision transcription fallback.
-Uses EasyOCR (CPU, no GPU required).
+Uses Tesseract via pytesseract (~80MB RAM, no PyTorch).
 
 Install:
-  pip install easyocr flask gunicorn opencv-python-headless numpy
+  apt install tesseract-ocr tesseract-ocr-eng
+  pip install pytesseract Pillow flask gunicorn opencv-python-headless numpy
 
 Run locally:
   python server.py          # starts on port 8100
@@ -24,22 +25,13 @@ import cv2
 from flask import Flask, request, jsonify
 
 try:
-    import easyocr
+    import pytesseract
+    from PIL import Image
 except ImportError:
-    print("ERROR: easyocr not installed. Run: pip install easyocr")
+    print("ERROR: pytesseract/Pillow not installed. Run: pip install pytesseract Pillow")
     sys.exit(1)
 
 app = Flask(__name__)
-
-# Lazy-init: models download on first OCR request, not at startup.
-# This lets gunicorn open the port immediately so Render doesn't time out.
-_reader = None
-
-def get_reader() -> easyocr.Reader:
-    global _reader
-    if _reader is None:
-        _reader = easyocr.Reader(["en"], gpu=False, verbose=False)
-    return _reader
 
 
 @app.route("/health")
@@ -62,23 +54,25 @@ def run_ocr():
     try:
         img_bytes = base64.b64decode(image_b64)
         nparr = np.frombuffer(img_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        if img is None:
+        img_cv = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img_cv is None:
             return jsonify({"error": "Could not decode image"}), 400
+        # Convert BGR→RGB for Pillow
+        img_pil = Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGB))
     except Exception as e:
         return jsonify({"error": f"Image decode failed: {e}"}), 400
 
     try:
-        results = get_reader().readtext(img, detail=1)
+        # --psm 6: assume uniform block of text (good for receipts/bills)
+        # --oem 3: default OCR engine (LSTM)
+        text = pytesseract.image_to_string(img_pil, config="--psm 6 --oem 3")
     except Exception as e:
         return jsonify({"error": f"OCR failed: {e}"}), 500
 
-    lines = [text for (_, text, conf) in results if conf > 0.5]
-    return jsonify({"text": "\n".join(lines)})
+    return jsonify({"text": text.strip()})
 
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8100))
     print(f"OCR service starting on http://localhost:{port}")
-    print("First run downloads EasyOCR models (~100MB) — wait for 'Ready'")
     app.run(host="0.0.0.0", port=port, debug=False)
