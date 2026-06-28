@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: daamcheck-paddle
+    runtime: python
+    rootDir: paddleocr_service
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --bind 0.0.0.0:$PORT --timeout 120 --workers 1
+    plan: free
+    healthCheckPath: /health

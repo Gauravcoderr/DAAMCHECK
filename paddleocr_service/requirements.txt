@@ -1,5 +1,6 @@
 paddlepaddle
 paddleocr
 flask
+gunicorn
 opencv-python-headless
 numpy
