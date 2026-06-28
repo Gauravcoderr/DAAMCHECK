@@ -22,7 +22,9 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
 
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    if (!origin) return cb(null, true);
+    // Allow exact matches + all Vercel preview/prod domains
+    if (allowedOrigins.includes(origin) || /\.vercel\.app$/.test(origin)) return cb(null, true);
     cb(new Error(`CORS: ${origin} not allowed`));
   },
   credentials: true,
