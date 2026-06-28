@@ -31,8 +31,15 @@ except ImportError:
 
 app = Flask(__name__)
 
-# Initialize once — downloads models (~100MB) on first run
-reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+# Lazy-init: models download on first OCR request, not at startup.
+# This lets gunicorn open the port immediately so Render doesn't time out.
+_reader = None
+
+def get_reader() -> easyocr.Reader:
+    global _reader
+    if _reader is None:
+        _reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+    return _reader
 
 
 @app.route("/health")
@@ -62,7 +69,7 @@ def run_ocr():
         return jsonify({"error": f"Image decode failed: {e}"}), 400
 
     try:
-        results = reader.readtext(img, detail=1)
+        results = get_reader().readtext(img, detail=1)
     except Exception as e:
         return jsonify({"error": f"OCR failed: {e}"}), 500
 
