@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Logo } from "@/components/ui/Logo";
 
 const links = [
@@ -9,47 +10,117 @@ const links = [
   { href: "/gst-checker", label: "GST Checker" },
   { href: "/irctc-prices", label: "IRCTC Prices" },
   { href: "/scan-bill", label: "Scan Bill" },
+  { href: "/chat", label: "DaamBot", badge: "AI" },
 ];
 
 export default function Nav() {
   const path = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   if (path === "/chat") return null;
 
   return (
-    <header className="sticky top-0 z-50 bg-white/94 backdrop-blur-md border-b border-line">
-      <div className="max-w-6xl mx-auto px-6 md:px-10 flex items-center h-[62px] gap-8">
-        {/* Brand */}
-        <Link href="/" className="flex-shrink-0 transition-opacity hover:opacity-90">
-          <Logo />
+    <header className="sticky top-0 z-50 bg-white border-b border-line">
+      <div className="max-w-6xl mx-auto px-5 md:px-10 flex items-center h-[64px] gap-6">
+
+        {/* Logo */}
+        <Link href="/" className="flex-shrink-0 hover:opacity-85 transition-opacity">
+          <Logo iconSize={28} />
         </Link>
 
-        {/* Desktop links */}
-        <nav className="hidden md:flex gap-1">
+        {/* Desktop nav — centered */}
+        <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={`text-[15px] font-semibold px-3.5 py-1.5 rounded-[7px] transition-colors tracking-[-0.1px] ${
+              className={`relative inline-flex items-center gap-1.5 text-[14px] font-medium px-3.5 py-2 rounded-lg transition-colors ${
                 path === l.href
-                  ? "text-green bg-green-pale"
-                  : "text-ink-2 hover:bg-line-2 hover:text-ink"
+                  ? "text-green bg-green-pale font-semibold"
+                  : "text-ink-2 hover:text-ink hover:bg-line-2"
               }`}
             >
               {l.label}
+              {l.badge && (
+                <span className="inline-flex items-center text-[9px] font-bold bg-green text-white rounded-full px-1.5 py-0.5 leading-none tracking-[.04em]">
+                  {l.badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>
 
-        {/* CTA */}
-        <div className="ml-auto">
+        {/* Desktop CTAs */}
+        <div className="hidden md:flex items-center gap-2.5 ml-auto">
+          <Link
+            href="/chat"
+            className="text-[14px] font-semibold text-ink-2 hover:text-ink px-3.5 py-2 rounded-lg hover:bg-line-2 transition-colors"
+          >
+            Ask DaamBot
+          </Link>
           <Link
             href="/scan-bill"
-            className="inline-flex items-center gap-2 bg-green text-white text-[14px] font-bold rounded-full px-5 py-2.5 transition-colors hover:bg-green-dark"
+            className="inline-flex items-center gap-1.5 bg-green hover:bg-green-dark text-white text-[14px] font-bold rounded-lg px-4 py-2 transition-colors"
           >
             Scan a bill
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="5,12 19,12" /><polyline points="13,6 19,12 13,18" />
+            </svg>
           </Link>
         </div>
+
+        {/* Mobile hamburger */}
+        <button
+          type="button"
+          className="md:hidden ml-auto p-2 rounded-lg text-ink-2 hover:bg-line-2 transition-colors"
+          onClick={() => setMobileOpen((o) => !o)}
+          aria-label="Toggle menu"
+        >
+          {mobileOpen ? (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          ) : (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          )}
+        </button>
       </div>
+
+      {/* Mobile dropdown */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-line bg-white px-5 py-4 flex flex-col gap-1">
+          {links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMobileOpen(false)}
+              className={`inline-flex items-center gap-2 text-[15px] font-medium px-3 py-2.5 rounded-lg transition-colors ${
+                path === l.href
+                  ? "text-green bg-green-pale font-semibold"
+                  : "text-ink-2 hover:text-ink hover:bg-line-2"
+              }`}
+            >
+              {l.label}
+              {l.badge && (
+                <span className="inline-flex items-center text-[9px] font-bold bg-green text-white rounded-full px-1.5 py-0.5 leading-none">
+                  {l.badge}
+                </span>
+              )}
+            </Link>
+          ))}
+          <div className="border-t border-line mt-2 pt-3">
+            <Link
+              href="/scan-bill"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center justify-center gap-2 bg-green hover:bg-green-dark text-white text-[15px] font-bold rounded-lg px-4 py-3 transition-colors w-full"
+            >
+              Scan a bill
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
