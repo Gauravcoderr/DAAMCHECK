@@ -340,7 +340,7 @@ export default function ChatPage() {
               </span>
             </div>
             <p className="text-[10px] text-ink-4 leading-none mt-0.5 hidden sm:block">
-              Indian food bill expert · Powered by Gemini
+              Indian food bill expert
             </p>
           </div>
         </div>
