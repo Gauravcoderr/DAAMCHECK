@@ -13,7 +13,101 @@ DaamCheck helps Indians verify if their restaurant, hotel, or IRCTC train food b
 
 ---
 
-## Build Log — Session Findings (preserved from compacted context)
+## Build Log — Session 2 Findings (2026-06-28)
+
+### Real IRCTC bill formats discovered (4 actual bills photographed)
+
+Four distinct column formats found in the wild:
+
+| Format | Example | Unit price rule |
+|--------|---------|----------------|
+| SnapBizz `Item \| Qty \| SP \| Amt` | Food \| 23 \| 130.00 \| 2990.00 | SP column = unit. Amt = total. Never use Amt. |
+| IRCTC total `Item \| Qty \| Price` | Veg Meal \| 8 \| 640.00 | Price = TOTAL → divide by Qty: 640÷8=₹80 |
+| MRP-labelled | "Veg Pulav/Fried Rice\nMRP: 80.00 \| Qty 1 \| Price 80.00" | MRP line = unit price |
+| Restaurant plain | Item + price in single column | Price = unit price |
+
+**Key bill facts discovered:**
+- SnapBizz powers IRCTC catering vendor POS across India — most IRCTC bills use this system
+- IRCTC reverse charge bills: `"Tax not payable on reverse charge basis"` → GST = 0 for passenger, no GST check needed
+- Some IRCTC bills say `"Prices are Inclusive of Taxes"` — GST embedded, no separate line
+- Rajdhani/Tejas Express bills: different caterer, "Dinner" @ ₹235 — different cap vs regular trains
+- Egg Meal (common IRCTC item) was missing from price list — added
+- "Veg. Pulav/Fried Rice" → maps to "Veg Fried Rice" cap ₹75 — fuzzy match needed
+
+### OCR pipeline — two-pass architecture built
+
+**Why single-pass fails:** Vision models struggle when asked to both read AND reason (column detection, math, format classification) simultaneously. Splitting into two passes improves accuracy.
+
+```
+Pass 1 (vision model)  → raw text transcription, column structure preserved
+Pass 2 (text model)    → parse transcription → structured JSON
+Validation layer       → math check: sum(price×qty) vs totalAmount → auto-fix unit/total confusion
+```
+
+**Model choices:**
+- Pass 1 vision: Gemini 2.0 Flash (primary — handles up to 20MB phone photos)
+- Pass 1 vision: `nvidia/nemoretriever-ocr-v1` (fallback — purpose-built OCR, better than phi-3.5-vision)
+- Pass 2 text: Gemini 2.0 Flash text-only (JSON parse)
+- Pass 2 text: `meta/llama-3.3-70b-instruct` via NVIDIA (fallback)
+
+**NVIDIA model lessons:**
+- `microsoft/phi-3.5-vision-instruct` 404s — actual name is `microsoft/Phi-3.5-vision-instruct` (capital P), but also has 180KB base64 image size limit — phone photos (2-5MB) always fail
+- `nvidia/nemoretriever-ocr-v1` is purpose-built for OCR, better accuracy, higher size tolerance
+- Always put Gemini FIRST for vision — it handles large images; NVIDIA vision is only fallback
+
+**Image compression (client-side, canvas):**
+- Canvas resizes image to max 1400px wide/tall, JPEG quality 0.85 before base64 encoding
+- 3-5MB phone photo → ~150-200KB sent to API
+- 1400px is sufficient for bill text legibility
+
+**API key gotcha:**
+- Gemini API keys from Google AI Studio start with `AIza...` — this is the format to use
+- Keys starting with `AQ.` are a different format (OAuth token?) — rejected by Gemini API with `INVALID_ARGUMENT`
+- snkrs-cart's Gemini key was project-restricted — won't work cross-project
+
+### IRCTC backend — fuzzy matching + expanded price list
+
+**Before:** Exact string match only — "Veg. Pulav/ Fried Rice" would not match "Veg Fried Rice"
+
+**After:** Token-overlap fuzzy matching with threshold 0.4:
+- Tokenizes both strings (lowercase, strip punctuation)
+- Scores overlap fraction: `matches / max(inputLen, candidateLen)`
+- Falls back to Unknown only if best score < 0.4
+
+**New items added to price list:**
+- Paneer Curry (alias: paneer masala, paneer butter masala) — ₹80
+- Chicken Curry (alias: chicken masala) — ₹100
+- Egg Meal (alias for Non-Veg Thali) — ₹135
+- Veg Pulav / Pulao / Pulav (alias for Veg Fried Rice) — ₹75
+- Rajdhani Veg Meal (alias: veg lunch, veg dinner) — ₹155
+- Rajdhani Non-Veg Meal (alias: nonveg dinner, egg meal on Rajdhani) — ₹185
+- Breakfast (generic) — ₹90
+- Dinner (generic, Rajdhani) — ₹185
+- Aliases for Tea, Coffee, Samosa, Dosa (Hindi/variant spellings)
+
+**Backend check response** now returns `matchedName` field so UI can show "matched as Veg Fried Rice" when input was "Veg Pulav".
+
+### Nav redesign — dmchamp.com style
+
+Changes from previous nav:
+- `border-b border-line` removed → `shadow-[0_1px_4px_rgba(0,0,0,0.07)]` (floating, no hard line)
+- Height 64px → 68px (more breathing room)
+- `max-w-6xl` → `max-w-7xl`
+- Active link: `rounded-full border border-green bg-[#ECFDF5]` pill (matches dmchamp "Use Cases" active state)
+- "Ask DaamBot" CTA: plain text link with `hover:text-green` (like dmchamp "Log in")
+- "Scan a bill" CTA: `rounded-full font-semibold px-5 py-[9px]` (like dmchamp "Start free →")
+- Inactive links: `text-[#374151]` (gray-700, matches dmchamp body text color)
+
+### Error handling — never expose raw API errors to UI
+
+**Pattern enforced:**
+- `console.error("[OCR Pass1 Gemini]", msg)` — server logs get full error
+- Client gets only: `"Could not read the bill photo. Try a clearer, well-lit image or use manual entry."`
+- Previous code returned the full Gemini JSON error (with API key info!) to the client — fixed
+
+---
+
+## Build Log — Session 1 Findings (preserved from compacted context)
 
 ### Design iterations
 
@@ -78,7 +172,7 @@ Attempted to scrape official logos from complaint portals. Results:
 
 ---
 
-## Current Status — Shipped ✅
+## Current Status — Shipped ✅ (updated 2026-06-28)
 
 ### Frontend (Next.js 14, Vercel)
 - [x] Homepage — Marquee → Hero → TrustStrip → Stats → ToolCards → HowItWorks → CtaBand → Footer
@@ -105,12 +199,17 @@ Attempted to scrape official logos from complaint portals. Results:
 
 ## Phase 1 — Core Hardening
 
-### Real OCR Bill Scanner
-- [ ] Google Cloud Vision OCR or Tesseract.js — parse actual bill photo
-- [ ] Extract: item names, quantities, individual prices, GST %, service charge line
-- [ ] Auto-map extracted item names to IRCTC cap list (fuzzy match)
-- [ ] Confidence score per extracted item — flag low-confidence extractions
-- [ ] Side-by-side view: what was on bill vs what is legal
+### Real OCR Bill Scanner — 🔄 In Progress
+- [x] Two-pass pipeline built: vision transcription → text parse → math validation
+- [x] Gemini 2.0 Flash vision (primary) + NVIDIA nemoretriever-ocr-v1 (fallback)
+- [x] Client-side image compression (canvas 1400px, JPEG 0.85) before upload
+- [x] IRCTC fuzzy matching — token overlap score, aliases for 30+ item names
+- [x] Math auto-correction — detects unit vs total price column ambiguity
+- [x] Rajdhani/Shatabdi price caps added (₹155 veg / ₹185 non-veg meals)
+- [ ] **BLOCKER: Valid Gemini API key needed** — get unrestricted `AIza...` key from aistudio.google.com/apikey
+- [ ] Confidence score display per item in results UI
+- [ ] Handle handwritten bills / camera blur recovery
+- [ ] GST check after OCR for restaurant bills (currently only IRCTC check runs post-OCR)
 
 ### GST Checker — More Restaurant Types
 - [ ] "Type of restaurant" selector: standalone / hotel (enter room rate) / food court / cloud kitchen / online delivery
@@ -237,7 +336,7 @@ Attempted to scrape official logos from complaint portals. Results:
 
 ---
 
-## Key Constraints to Remember
+## Key Constraints to Remember (updated 2026-06-28)
 
 - **Render free tier**: sleeps after 15 min inactivity → UptimeRobot on `/health` every 5 min
 - **IRCTC prices**: hardcoded — check menurates.irctc.co.in when Railway Board issues revision (usually once per year)
@@ -246,3 +345,9 @@ Attempted to scrape official logos from complaint portals. Results:
 - **Logo scraping**: NCH logo works via curl. All others block programmatic access — save manually from browser
 - **CSS module error in IDE**: `src/types/css.d.ts` with `declare module "*.css"` fixes VS Code false positive — do NOT delete this file
 - **HowItWorks z-index**: connector line is `z-index:0`, step icon circles are `z-index:10` — reverting this breaks the layout
+- **Gemini API key format**: must start with `AIza...` (from aistudio.google.com/apikey). Keys starting with `AQ.` are rejected with INVALID_ARGUMENT. snkrs-cart key is project-restricted — get a new one.
+- **NVIDIA vision image size**: phi-3.5-vision-instruct rejects base64 images >180KB. Phone bill photos are 2-5MB. Always use Gemini vision first. Client-side canvas compression (max 1400px, JPEG 0.85) reduces to ~150-200KB.
+- **NVIDIA model names are case-sensitive**: `microsoft/Phi-3.5-vision-instruct` (capital P) not `phi-3.5-vision-instruct` (404 otherwise)
+- **IRCTC reverse charge**: passengers don't pay GST on train food — `"Tax not payable on reverse charge basis"` is correct. Don't flag as GST violation.
+- **Error messages**: never return raw API error JSON to the client UI — log to `console.error` server-side, return clean user message only
+- **OCR pipeline order**: Gemini vision → NVIDIA OCR → fail. Gemini text parse → NVIDIA llama text → fail. Two-pass always beats single-pass for receipt accuracy.

@@ -20,24 +20,24 @@ export default function Nav() {
   if (path === "/chat") return null;
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-line">
-      <div className="max-w-6xl mx-auto px-5 md:px-10 flex items-center h-[64px] gap-6">
+    <header className="sticky top-0 z-50 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.07)]">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center h-[68px] gap-8">
 
         {/* Logo */}
-        <Link href="/" className="flex-shrink-0 hover:opacity-85 transition-opacity">
-          <Logo iconSize={28} />
+        <Link href="/" className="flex-shrink-0 hover:opacity-80 transition-opacity">
+          <Logo iconSize={30} />
         </Link>
 
         {/* Desktop nav — centered */}
-        <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center">
+        <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
-              className={`relative inline-flex items-center gap-1.5 text-[14px] font-medium px-3.5 py-2 rounded-lg transition-colors ${
+              className={`inline-flex items-center gap-1.5 text-[14px] px-4 py-[7px] rounded-full transition-colors ${
                 path === l.href
-                  ? "text-green bg-green-pale font-semibold"
-                  : "text-ink-2 hover:text-ink hover:bg-line-2"
+                  ? "text-green border border-green bg-[#ECFDF5] font-semibold"
+                  : "font-medium text-[#374151] hover:text-ink hover:bg-[#F3F4F6]"
               }`}
             >
               {l.label}
@@ -51,20 +51,20 @@ export default function Nav() {
         </nav>
 
         {/* Desktop CTAs */}
-        <div className="hidden md:flex items-center gap-2.5 ml-auto">
+        <div className="hidden md:flex items-center gap-3 ml-auto">
           <Link
             href="/chat"
-            className="text-[14px] font-semibold text-ink-2 hover:text-ink px-3.5 py-2 rounded-lg hover:bg-line-2 transition-colors"
+            className="text-[14px] font-medium text-[#374151] hover:text-green transition-colors"
           >
             Ask DaamBot
           </Link>
           <Link
             href="/scan-bill"
-            className="inline-flex items-center gap-1.5 bg-green hover:bg-green-dark text-white text-[14px] font-bold rounded-lg px-4 py-2 transition-colors"
+            className="inline-flex items-center gap-1.5 bg-green hover:bg-green-dark text-white text-[14px] font-semibold rounded-full px-5 py-[9px] transition-colors shadow-sm"
           >
             Scan a bill
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="5,12 19,12" /><polyline points="13,6 19,12 13,18" />
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="5" y1="12" x2="19" y2="12" /><polyline points="13,6 19,12 13,18" />
             </svg>
           </Link>
         </div>
@@ -72,7 +72,7 @@ export default function Nav() {
         {/* Mobile hamburger */}
         <button
           type="button"
-          className="md:hidden ml-auto p-2 rounded-lg text-ink-2 hover:bg-line-2 transition-colors"
+          className="md:hidden ml-auto p-2 rounded-lg text-[#374151] hover:bg-[#F3F4F6] transition-colors"
           onClick={() => setMobileOpen((o) => !o)}
           aria-label="Toggle menu"
         >
@@ -90,16 +90,16 @@ export default function Nav() {
 
       {/* Mobile dropdown */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-line bg-white px-5 py-4 flex flex-col gap-1">
+        <div className="md:hidden border-t border-[#E5E7EB] bg-white px-5 py-4 flex flex-col gap-1">
           {links.map((l) => (
             <Link
               key={l.href}
               href={l.href}
               onClick={() => setMobileOpen(false)}
-              className={`inline-flex items-center gap-2 text-[15px] font-medium px-3 py-2.5 rounded-lg transition-colors ${
+              className={`inline-flex items-center gap-2 text-[15px] px-4 py-2.5 rounded-full transition-colors ${
                 path === l.href
-                  ? "text-green bg-green-pale font-semibold"
-                  : "text-ink-2 hover:text-ink hover:bg-line-2"
+                  ? "text-green border border-green bg-[#ECFDF5] font-semibold"
+                  : "font-medium text-[#374151] hover:text-ink hover:bg-[#F3F4F6]"
               }`}
             >
               {l.label}
@@ -110,11 +110,18 @@ export default function Nav() {
               )}
             </Link>
           ))}
-          <div className="border-t border-line mt-2 pt-3">
+          <div className="border-t border-[#E5E7EB] mt-2 pt-3 flex flex-col gap-2">
+            <Link
+              href="/chat"
+              onClick={() => setMobileOpen(false)}
+              className="text-center text-[15px] font-medium text-[#374151] py-2"
+            >
+              Ask DaamBot
+            </Link>
             <Link
               href="/scan-bill"
               onClick={() => setMobileOpen(false)}
-              className="flex items-center justify-center gap-2 bg-green hover:bg-green-dark text-white text-[15px] font-bold rounded-lg px-4 py-3 transition-colors w-full"
+              className="flex items-center justify-center gap-2 bg-green hover:bg-green-dark text-white text-[15px] font-semibold rounded-full px-4 py-3 transition-colors w-full"
             >
               Scan a bill
             </Link>

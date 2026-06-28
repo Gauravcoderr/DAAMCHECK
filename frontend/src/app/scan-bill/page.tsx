@@ -8,12 +8,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ManualItem = { name: string; chargedPrice: number };
+type ManualItem = { name: string; chargedPrice: number; qty?: number };
 
 type CheckResult = {
   name: string;
   chargedPrice: number;
+  qty: number;
+  totalCharged: number;
   maxPrice: number | null;
+  matchedName: string | null;
   status: "ok" | "overcharged" | "unknown";
   overcharge: number;
 };
@@ -26,11 +29,12 @@ type CheckResponse = {
 };
 
 type OCRSuccess = {
-  items: { name: string; price: number }[];
+  items: { name: string; price: number; qty?: number }[];
   gstPercent: number;
   serviceChargePct: number;
   restaurantName: string | null;
   totalAmount: number;
+  isIRCTC: boolean;
 };
 
 type DisplayRow = {
@@ -76,12 +80,25 @@ const IRCTC_ITEMS: string[] = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toDisplayResult(res: CheckResponse, restaurantName?: string | null): DisplayResult {
-  const rows: DisplayRow[] = res.results.map((r) => ({
-    name: r.name,
-    chargedPrice: r.chargedPrice,
-    note: r.maxPrice ? `Max ₹${r.maxPrice}` : r.status === "unknown" ? "Not in IRCTC list" : "Within limit",
-    statusLabel: r.status === "ok" ? "Legal" : r.status === "overcharged" ? "Illegal" : "Unknown",
-  }));
+  const rows: DisplayRow[] = res.results.map((r) => {
+    const qtyLabel = r.qty > 1 ? ` × ${r.qty}` : "";
+    const matchLabel = r.matchedName ? ` (matched: ${r.matchedName})` : "";
+    let note = "";
+    if (r.status === "unknown") note = "Not in IRCTC price list";
+    else if (r.status === "overcharged") {
+      const perUnit = r.chargedPrice - (r.maxPrice ?? 0);
+      note = r.qty > 1
+        ? `Max ₹${r.maxPrice}/meal${matchLabel} — ₹${perUnit.toFixed(0)} over × ${r.qty} = ₹${r.overcharge.toFixed(0)} total`
+        : `Max ₹${r.maxPrice}/meal${matchLabel} — overcharged ₹${r.overcharge.toFixed(0)}`;
+    }
+    else note = `Within limit ₹${r.maxPrice}/meal${matchLabel}`;
+    return {
+      name: `${r.name}${qtyLabel}`,
+      chargedPrice: r.totalCharged ?? r.chargedPrice,
+      note,
+      statusLabel: r.status === "ok" ? "Legal" : r.status === "overcharged" ? "Illegal" : "Unknown",
+    };
+  });
   return {
     restaurantName: restaurantName ?? null,
     rows,
@@ -145,12 +162,15 @@ function Results({ data }: { data: DisplayResult }) {
       </div>
 
       {!data.legal && (
-        <div className="flex justify-between items-center flex-wrap gap-3 px-[22px] py-[18px] bg-red-pale border-[1.5px] border-[#FCA5A5] rounded-2xl">
-          <div>
-            <p className="text-[15px] font-bold text-[#7F1D1D]">You were overcharged</p>
-            <p className="text-[11px] text-[#B91C1C] mt-0.5">{data.detail}</p>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center flex-wrap gap-3 px-[22px] py-[18px] bg-red-pale border-[1.5px] border-[#FCA5A5] rounded-2xl">
+            <div>
+              <p className="text-[15px] font-bold text-[#7F1D1D]">Possible overcharge detected</p>
+              <p className="text-[11px] text-[#B91C1C] mt-0.5">{data.detail} — verify before acting</p>
+            </div>
+            <span className="text-[30px] font-black tracking-tight2 text-red font-tabular">₹{data.totalOvercharge}</span>
           </div>
-          <span className="text-[30px] font-black tracking-tight2 text-red font-tabular">₹{data.totalOvercharge}</span>
+          <p className="text-[11px] text-ink-4 px-1">These results are indicative only. Cross-check amounts on your physical bill before filing a complaint. IRCTC prices are based on Railway Board circulars — verify current rates at irctc.co.in.</p>
         </div>
       )}
 
@@ -193,43 +213,88 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [ocrMeta, setOcrMeta] = useState<OCRSuccess | null>(null);
-  const [editableItems, setEditableItems] = useState<{ name: string; chargedPrice: number }[]>([]);
+  const [editableItems, setEditableItems] = useState<{ name: string; chargedPrice: number; qty: number }[]>([]);
+  const [qualityWarning, setQualityWarning] = useState<string | null>(null);
+  const qualityCheckCancelledRef = useRef(false);
 
   const ocrMutation = useMutation({
     mutationFn: async (file: File): Promise<OCRSuccess> => {
-      const base64: string = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error("Failed to read file"));
-        reader.readAsDataURL(file);
+      // Compress image client-side: max 1400px, JPEG 0.85, send as multipart
+      // FormData avoids ~33% base64 size inflation vs JSON body
+      const blob: Blob = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          const MAX = 1400;
+          const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("Canvas not supported")); return; }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob((b) => {
+            if (!b) { reject(new Error("Compression failed")); return; }
+            resolve(b);
+          }, "image/jpeg", 0.85);
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = url;
       });
-      const res = await fetch("/api/ocr", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64 }),
-      });
+      const form = new FormData();
+      form.append("image", blob, "bill.jpg");
+      const res = await fetch("/api/ocr", { method: "POST", body: form });
+      if (!res.ok) throw new Error(`OCR service error ${res.status}`);
       const data = await res.json();
       if ("error" in data) throw new Error(data.error);
       return data as OCRSuccess;
     },
     onSuccess: (data) => {
       setOcrMeta(data);
-      setEditableItems(data.items.map((it) => ({ name: it.name, chargedPrice: it.price })));
+      setEditableItems(data.items.map((it) => ({ name: it.name, chargedPrice: it.price, qty: Math.max(1, it.qty ?? 1) })));
     },
   });
 
   const checkMutation = useMutation({
-    mutationFn: (items: { name: string; chargedPrice: number }[]) =>
+    mutationFn: (items: { name: string; chargedPrice: number; qty: number }[]) =>
       checkIRCTCItems(items) as Promise<CheckResponse>,
   });
 
   function applyFile(file: File) {
+    const previewObj = URL.createObjectURL(file);
     setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    setPreviewUrl(previewObj);
     setOcrMeta(null);
     setEditableItems([]);
+    setQualityWarning(null);
+    qualityCheckCancelledRef.current = false;
     ocrMutation.reset();
     checkMutation.reset();
+    // Fix 5: image quality preflight — warn if too blurry/small before OCR call
+    const img = new Image();
+    img.onload = () => {
+      if (qualityCheckCancelledRef.current) return; // file removed before load completed
+      const MAX = 1400;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      if (w < 300 || h < 300) { setQualityWarning("Very low resolution — results may be inaccurate. Use a closer, higher-res photo."); return; }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, w, h);
+      const pixels = ctx.getImageData(0, 0, w, h).data;
+      let sum = 0, sumSq = 0, count = 0;
+      for (let i = 0; i < pixels.length; i += 4 * 8) {
+        const lum = pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114;
+        sum += lum; sumSq += lum * lum; count++;
+      }
+      const variance = count > 0 ? sumSq / count - (sum / count) ** 2 : 999;
+      if (variance < 80) setQualityWarning("Photo looks too dark or blurry — better lighting improves accuracy.");
+    };
+    img.src = previewObj;
   }
 
   function handleRemoveFile() {
@@ -238,6 +303,8 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
     setPreviewUrl(null);
     setOcrMeta(null);
     setEditableItems([]);
+    setQualityWarning(null);
+    qualityCheckCancelledRef.current = true;
     ocrMutation.reset();
     checkMutation.reset();
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -297,6 +364,13 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
         </div>
       )}
 
+      {selectedFile && !ocrMeta && qualityWarning && (
+        <div className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-amber-pale border border-amber rounded-xl text-[13px] text-amber font-semibold">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {qualityWarning}
+        </div>
+      )}
+
       {selectedFile && !ocrMeta && (
         <button
           type="button"
@@ -317,6 +391,13 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
         </Alert>
       )}
 
+      {ocrMeta && !ocrMutation.isPending && ocrMeta.isIRCTC && (
+        <div className="mt-4 flex items-center gap-2 px-4 py-2.5 bg-amber-pale border border-amber rounded-xl text-[13px] text-amber font-semibold">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          IRCTC bill detected — checking against railway price caps (no GST applies, reverse charge basis)
+        </div>
+      )}
+
       {ocrMeta && !ocrMutation.isPending && editableItems.length > 0 && (
         <div className="mt-4 space-y-4">
           <div className="border-[1.5px] border-line rounded-2xl overflow-hidden">
@@ -326,7 +407,9 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
                 <thead className="bg-line-3 border-b-[1.5px] border-line">
                   <tr>
                     <th className="px-[18px] py-[10px] text-[11px] font-bold text-ink-4 uppercase tracking-[.08em] text-left">Item</th>
-                    <th className="px-[18px] py-[10px] text-[11px] font-bold text-ink-4 uppercase tracking-[.08em] text-right">Price</th>
+                    <th className="px-[14px] py-[10px] text-[11px] font-bold text-ink-4 uppercase tracking-[.08em] text-center w-16">Qty</th>
+                    <th className="px-[18px] py-[10px] text-[11px] font-bold text-ink-4 uppercase tracking-[.08em] text-right">Unit Price</th>
+                    <th className="px-[18px] py-[10px] text-[11px] font-bold text-ink-4 uppercase tracking-[.08em] text-right w-24">Total</th>
                     <th className="px-[18px] py-[10px] w-10"><span className="sr-only">Remove</span></th>
                   </tr>
                 </thead>
@@ -342,16 +425,30 @@ function UploadSection({ onDemoLoad }: { onDemoLoad: () => void }) {
                           className="text-sm text-ink bg-transparent border-b border-dashed border-line focus:border-green focus:outline-none py-0.5 w-full"
                         />
                       </td>
-                      <td className="px-[18px] py-2">
+                      <td className="px-[14px] py-2 text-center">
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          title={`Quantity for item ${idx + 1}`}
+                          value={item.qty}
+                          onChange={(e) => { const v = parseInt(e.target.value); setEditableItems((p) => p.map((it, i) => i === idx ? { ...it, qty: isNaN(v) || v < 1 ? 1 : v } : it)); checkMutation.reset(); }}
+                          className="w-12 text-sm text-ink bg-transparent border-b border-dashed border-line focus:border-green focus:outline-none px-1 py-0.5 text-center font-tabular"
+                        />
+                      </td>
+                      <td className="px-[18px] py-2 text-right">
                         <input
                           type="number"
                           min="0"
                           step="0.5"
-                          title={`Price for item ${idx + 1}`}
+                          title={`Unit price for item ${idx + 1}`}
                           value={item.chargedPrice === 0 ? "" : item.chargedPrice}
                           onChange={(e) => { const v = parseFloat(e.target.value); setEditableItems((p) => p.map((it, i) => i === idx ? { ...it, chargedPrice: isNaN(v) ? 0 : v } : it)); checkMutation.reset(); }}
-                          className="w-20 text-sm text-ink bg-transparent border-b border-dashed border-line focus:border-green focus:outline-none px-1 py-0.5 text-right"
+                          className="w-20 text-sm text-ink bg-transparent border-b border-dashed border-line focus:border-green focus:outline-none px-1 py-0.5 text-right font-tabular"
                         />
+                      </td>
+                      <td className="px-[18px] py-2 text-right text-sm text-ink-3 font-tabular">
+                        ₹{(item.chargedPrice * item.qty).toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                       </td>
                       <td className="px-[18px] py-2 text-center">
                         <button type="button" onClick={() => { setEditableItems((p) => p.filter((_, i) => i !== idx)); checkMutation.reset(); }} className="text-red hover:text-red/70" aria-label={`Remove ${item.name}`}>
@@ -576,7 +673,7 @@ export default function ScanBillPage() {
                 ))}
               </div>
               <div className="px-5 py-2.5 text-[11px] text-ink-4 border-t border-line bg-line-3">
-                OCR: Nvidia nemoretriever → Gemini Flash Vision → Groq llama-4-scout-vision
+                OCR: NVIDIA nemotron-nano → phi-3-vision → Gemini Flash → PaddleOCR
               </div>
             </div>
           </div>
